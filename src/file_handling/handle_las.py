@@ -4,6 +4,7 @@ import laspy
 import numpy as np
 import pandas as pd
 from laspy import LasData
+import open3d as o3d
 
 from src.file_handling.file_handler import FileHandler
 from src.logger.logger import Logger
@@ -58,3 +59,10 @@ class HandleLAS(FileHandler):
         x, y, z = self.file["X"], self.file["Y"], self.file["Z"]  # Extracting the X, Y and Z coordinates
         self.points = pd.DataFrame(np.array([x, y, z]).T)  # Storing the coordinates in a pandas DataFrame
         self.logger.info("Created Pandas DataFrame with X, Y and Z coordinates")
+
+    def display_point_cloud(self) -> None:
+        point_cloud = o3d.geometry.PointCloud()  # Creating an empty point cloud
+        point_cloud.points = o3d.utility.Vector3dVector(self.points.to_numpy())  # Adding the points to the point cloud
+        self.logger.info("Displaying point cloud...")
+        o3d.visualization.draw_geometries([point_cloud])  # Displaying the point cloud
+        self.logger.info("Point cloud displayed")
