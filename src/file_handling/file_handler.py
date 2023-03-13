@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Any
 
 from src.logger.logger import Logger
 
@@ -18,11 +17,12 @@ class FileHandler(ABC):
 
     @file_path.setter
     def file_path(self, file_path: str) -> None:
-        if not file_path:
+        if not file_path and file_path is not None:
             raise TypeError("File path cannot be empty")
 
         self.__file_path = file_path
 
+    """
     @property
     @abstractmethod
     def file(self) -> Any:
@@ -32,6 +32,7 @@ class FileHandler(ABC):
     @abstractmethod
     def file(self, file: Any) -> None:
         pass
+    """
 
     @property
     def logger(self) -> Logger:
@@ -46,4 +47,8 @@ class FileHandler(ABC):
 
     @abstractmethod
     def _open(self) -> None:
+        pass
+
+    @abstractmethod
+    def display(self) -> None:
         pass

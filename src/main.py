@@ -1,10 +1,10 @@
 from config import Config
-from src.file_handling.handle_las import HandleLAS
+from src.file_handling.las import LAS
 
 
 def main() -> None:
-    las = HandleLAS(file_path=Config.SPEEDBUMP_DATA_PATH.value)
-    las.display_point_cloud()
+    las = LAS(file_path=Config.SPEEDBUMP_DATA_PATH.value)
+    print(las)
 
 
 if __name__ == "__main__":
