@@ -8,13 +8,11 @@ def main() -> None:
     segmented_point_clouds = las.segmented_point_clouds
     [
         spc.display(spc.point_cloud)
-        if spc.plane.standard_deviation() > 100
+        if spc.plane.standard_deviation() > 10
         else Logger.get_logger(__name__).info(
             f"Plane {spc.plane} has a standard deviation of {spc.plane.standard_deviation()}"
         )
         for spc in segmented_point_clouds
-
-
     ]
 
 
