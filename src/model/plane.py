@@ -29,7 +29,11 @@ class Plane:
         self.b = b
         self.c = c
         self.d = d
-        self.inliers = pd.DataFrame()
+        self.inliers = pd.DataFrame({
+            "x": [],
+            "y": [],
+            "z": [],
+        })
 
     @property
     def logger(self) -> Logger:
@@ -103,7 +107,8 @@ class Plane:
         if point is None:
             raise TypeError("Point cannot be null")
 
-        pd.concat([self.inliers, pd.DataFrame(point).T], ignore_index=True)  # Add the point to the inliers
+        # FIXME: Points to dataframe is not being added correctly
+        self.inliers.loc[len(self.inliers)] = point
 
     def z(self, x: float, y: float) -> float:
         """
@@ -135,9 +140,19 @@ class Plane:
 
         return z - plane_z
 
+    def mean(self) -> float:
+        """
+        Calculates the mean of the inliers
+        :return:
+        """
+        z = self.inliers.z.mean()
+        return z
+
     def standard_deviation(self) -> float:
-        # TODO: Implement
-        pass
+        mean = self.mean()
+        z = self.inliers.z
+        return np.sqrt(np.sum((z - mean) ** 2) / len(z))
+
 
     def __repr__(self):
-        return f"{self.a:.4f}x + {self.b:.4f}y + {self.c:.4f}z + {self.d:.4f}=0 with {len(self.inliers)} inliers"
+        return f"{self.a:.4f}x + {self.b:.4f}y + {self.c:.4f}z + {self.d:.4f}=0"

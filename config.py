@@ -21,8 +21,7 @@ class Config(Enum):
     # RANSAC settings
     DISTANCE_THRESHOLD = 5  # Distance threshold for RANSAC algorithm
     RANSAC_N = 3  # Number of points to sample for RANSAC algorithm
-    NUM_ITERATIONS = 10000  # Number of iterations for RANSAC algorithm
+    NUM_ITERATIONS = 100  # Number of iterations for RANSAC algorithm
 
     # Plane split settings
-    SPLIT_SCALE_FACTOR = 5e2  # Scaling factor for splitting the point cloud into smaller dataframes
-
+    SPLIT_SCALE_FACTOR = 1e-2  # Scaling factor for splitting the point cloud into smaller dataframes [0, 1]
