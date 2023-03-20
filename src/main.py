@@ -13,8 +13,6 @@ def main() -> None:
             f"Plane {spc.plane} has a standard deviation of {spc.plane.standard_deviation()}"
         )
         for spc in segmented_point_clouds
-
-
     ]
 
 
