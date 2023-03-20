@@ -90,6 +90,8 @@ class LAS(FileHandler):
 
         # TODO: Add point cloud manipulation here
         # TODO: Check if it is necessary to run a voxel downsize here
+        if self.__is_parent():
+            point_cloud = self.__voxel_downsample(point_cloud)
 
         self.__point_cloud = point_cloud
         self.logger.info("Point cloud set")
