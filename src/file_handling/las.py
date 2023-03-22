@@ -64,7 +64,6 @@ class LAS(FileHandler):
             self.segmented_point_clouds = []
 
         self.plane = self.__generate_plane(self.point_cloud)
-
         self.logger.info("Iteration complete\n")
 
     @property
@@ -246,7 +245,7 @@ class LAS(FileHandler):
         self.logger.info("Splitting points into smaller dataframes...")
 
         points_per_split = math.floor(
-            Config.SPLIT_SCALE_FACTOR.value * len(point_cloud.points)
+            Config.SPLIT_SCALE_FACTOR.value * len(point_cloud.points)  # TODO: Setup a new formula for this
         )  # No. of points per split
         self.logger.info(f"No. of points per split: {points_per_split}")
 

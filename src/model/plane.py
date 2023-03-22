@@ -52,18 +52,18 @@ class Plane:
 
     @a.setter
     def a(self, a: float) -> None:
-        if not a:
-            raise TypeError("Cannot be null")
+        if a is None:
+            raise TypeError("Cannot be None")
         self.__a = a
 
-    @property
+    @propertyz
     def b(self) -> float:
         return self.__b
 
     @b.setter
     def b(self, b: float) -> None:
-        if not b:
-            raise TypeError("Cannot be null")
+        if b is None:
+            raise TypeError("Cannot be None")
         self.__b = b
 
     @property
@@ -72,8 +72,8 @@ class Plane:
 
     @c.setter
     def c(self, c: float) -> None:
-        if not c:
-            raise TypeError("Cannot be null")
+        if c is None:
+            raise TypeError("Cannot be None")
         self.__c = c
 
     @property
@@ -82,8 +82,8 @@ class Plane:
 
     @d.setter
     def d(self, d: float) -> None:
-        if not d:
-            raise TypeError("Cannot be null")
+        if d is None:
+            raise TypeError("Cannot be None")
 
         self.__d = d
 
@@ -152,7 +152,6 @@ class Plane:
         mean = self.mean()
         z = self.inliers.z
         return np.sqrt(np.sum((z - mean) ** 2) / len(z))
-
 
     def __repr__(self):
         return f"{self.a:.4f}x + {self.b:.4f}y + {self.c:.4f}z + {self.d:.4f}=0"
