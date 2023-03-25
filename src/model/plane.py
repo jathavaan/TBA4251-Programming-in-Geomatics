@@ -56,7 +56,7 @@ class Plane:
             raise TypeError("Cannot be None")
         self.__a = a
 
-    @propertyz
+    @property
     def b(self) -> float:
         return self.__b
 

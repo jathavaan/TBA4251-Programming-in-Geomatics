@@ -16,7 +16,7 @@ class Config(Enum):
     SHOW_NORMAL_VECTORS = False  # Whether to show normal vectors in the 3D viewer
 
     # Voxel grid settings
-    VOXEL_SIZE = 1e2  # Voxel size for downsampling
+    VOXEL_SIZE = 1e-3  # Voxel size for downsampling
 
     # RANSAC settings
     DISTANCE_THRESHOLD = 100  # Distance threshold for RANSAC algorithm
@@ -24,4 +24,4 @@ class Config(Enum):
     NUM_ITERATIONS = 300  # Number of iterations for RANSAC algorithm
 
     # Plane split settings
-    SPLIT_SCALE_FACTOR = 1e-4  # Scaling factor for splitting the point cloud into smaller dataframes [0, 1]
+    SPLIT_SCALE_FACTOR = 1e-3  # Scaling factor for splitting the point cloud into smaller dataframes [0, 1]

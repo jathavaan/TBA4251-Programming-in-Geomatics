@@ -16,6 +16,7 @@ from src.model.plane import Plane
 class LAS(FileHandler):
     __point_cloud: o3d.geometry.PointCloud
     __parent_las: 'LAS'
+    __planes: list[Plane]
     __segmented_point_clouds: list['LAS']
     __plane: Plane
 
@@ -95,6 +96,8 @@ class LAS(FileHandler):
         self.__point_cloud = point_cloud
         self.logger.info("Point cloud set")
 
+        # self.__segment_point_cloud(self.point_cloud) # TODO: Remove this
+
     @property
     def parent_las(self) -> 'LAS':
         """
@@ -162,6 +165,46 @@ class LAS(FileHandler):
         self.__segmented_point_clouds = segmented_point_clouds
         self.logger.info("Segmented point clouds updated")
 
+    @property
+    def planes(self) -> list[Plane]:
+        """
+        Returns the planes
+        :return:
+        """
+        return self.__planes
+
+    @planes.setter
+    def planes(self, planes: list[Plane]) -> None:
+        """
+        Sets the planes
+        :param planes:
+        :return:
+        """
+        if planes is None:
+            raise TypeError("Planes cannot be None")
+
+        if not isinstance(planes, list):
+            raise TypeError("Planes must be a list")
+
+        self.__planes = planes
+        self.logger.info("Planes updated")
+
+    def add_plane(self, plane: Plane) -> None:
+        """
+        Adds a plane to the list of planes
+        :param plane:
+        :return:
+        """
+        if plane is None:
+            raise TypeError("Plane cannot be None")
+
+        if not isinstance(plane, Plane):
+            raise TypeError("Plane must be a Plane object")
+
+        if plane not in self.planes:
+            self.planes.append(plane)
+            self.logger.info(f"{plane} added")
+
     def display(self, point_cloud: o3d.geometry.PointCloud = None) -> None:
         """
         Displays the point cloud in a 3D viewer
@@ -188,6 +231,8 @@ class LAS(FileHandler):
 
         self.logger.info(f"Reading {self.file_path}")
         self.logger.info(f"Dimension names: {', '.join(las.point_format.dimension_names)}")
+
+        print()
 
         x, y, z = las.X, las.Y, las.Z  # Get the X, Y, Z coordinates
         points = pd.DataFrame(data=np.array([x, y, z]).T, columns=["x", "y", "z"])  # Storing coordinates in a DataFrame
@@ -216,7 +261,8 @@ class LAS(FileHandler):
 
     def __generate_plane(self, point_cloud: o3d.geometry.PointCloud) -> Plane:
         if self.__is_parent():
-            point_cloud = self.__voxel_downsample(point_cloud)  # Downsampling the point cloud if self is parent
+            pass
+            # point_cloud = self.__voxel_downsample(point_cloud)  # Downsampling the point cloud if self is parent
 
         self.logger.info("Generating plane...")
         plane_model, inlier_indexes = point_cloud.segment_plane(
@@ -229,9 +275,7 @@ class LAS(FileHandler):
         plane = Plane(a, b, c, d)  # Creating a Plane object
 
         inlier_points_df = self.__pc_to_df(point_cloud).iloc[inlier_indexes]  # Converting the pc to df
-        inlier_points = inlier_points_df.to_numpy()  # Converting the DataFrame to a numpy array
-
-        [plane.add_point(point) for point in inlier_points]  # Adding the points to the plane
+        plane.inliers = inlier_points_df  # Setting the inliers
 
         self.logger.info(f"Generated plane: {plane} with {len(plane.inliers)} inliers")
         return plane
@@ -242,18 +286,25 @@ class LAS(FileHandler):
         :param point_cloud:
         :return:
         """
-        self.logger.info("Splitting points into smaller dataframes...")
+        self.logger.info("Segmenting point cloud into smaller frames...")
+        pc_df = self.__pc_to_df(point_cloud)  # Converting the point cloud to a DataFrame
+        # pc_df.sort_values(by=["x", "y"], inplace=True)  # Sorting the DataFrame by x, y
+        origin = pc_df.iloc[0]  # Getting the origin point
+        Logger.get_logger(__name__).info(f"Origin {origin.x, origin.y, origin.z}")
+        pc_df -= origin  # Adjusting the DataFrame by subtracting the origin
+        Logger.get_logger(__name__).info(f"Set origin to (0, 0, 0)")
 
-        points_per_split = math.floor(
-            Config.SPLIT_SCALE_FACTOR.value * len(point_cloud.points)  # TODO: Setup a new formula for this
-        )  # No. of points per split
-        self.logger.info(f"No. of points per split: {points_per_split}")
+        rows_per_split = math.floor(
+            Config.SPLIT_SCALE_FACTOR.value * pc_df.size  # TODO: Setup a new formula for this
+        )  # No. of rows per split
+
+        self.logger.info(f"No. of rows per split: {rows_per_split}")
 
         segmented_point_clouds = []
 
-        for i in range(points_per_split):
-            start = i * points_per_split
-            end = (i + 1) * points_per_split
+        for i in range(rows_per_split):
+            start = i * rows_per_split
+            end = (i + 1) * rows_per_split
 
             if start > len(point_cloud.points):
                 self  # TODO: Figure out what to do here
