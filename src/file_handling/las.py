@@ -16,7 +16,6 @@ from src.model.plane import Plane
 class LAS(FileHandler):
     __point_cloud: o3d.geometry.PointCloud
     __parent_las: 'LAS'
-    __planes: list[Plane]
     __segmented_point_clouds: list['LAS']
     __plane: Plane
 
@@ -164,30 +163,6 @@ class LAS(FileHandler):
 
         self.__segmented_point_clouds = segmented_point_clouds
         self.logger.info("Segmented point clouds updated")
-
-    @property
-    def planes(self) -> list[Plane]:
-        """
-        Returns the planes
-        :return:
-        """
-        return self.__planes
-
-    @planes.setter
-    def planes(self, planes: list[Plane]) -> None:
-        """
-        Sets the planes
-        :param planes:
-        :return:
-        """
-        if planes is None:
-            raise TypeError("Planes cannot be None")
-
-        if not isinstance(planes, list):
-            raise TypeError("Planes must be a list")
-
-        self.__planes = planes
-        self.logger.info("Planes updated")
 
     def add_plane(self, plane: Plane) -> None:
         """
