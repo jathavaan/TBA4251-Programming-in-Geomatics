@@ -16,7 +16,7 @@ class Config(Enum):
     SHOW_NORMAL_VECTORS = False  # Whether to show normal vectors in the 3D viewer
 
     # Voxel grid settings
-    VOXEL_SIZE = 1e-3  # Voxel size for downsampling
+    VOXEL_SIZE = 1e3  # Voxel size for downsampling
 
     # RANSAC settings
     DISTANCE_THRESHOLD = 100  # Distance threshold for RANSAC algorithm

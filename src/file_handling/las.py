@@ -62,8 +62,8 @@ class LAS(FileHandler):
             self.logger.info("Creating child LAS object")
             self.point_cloud = point_cloud
             self.segmented_point_clouds = []
+            self.plane = self.__generate_plane(self.point_cloud)
 
-        self.plane = self.__generate_plane(self.point_cloud)
         self.logger.info("Iteration complete\n")
 
     @property
@@ -94,8 +94,6 @@ class LAS(FileHandler):
 
         self.__point_cloud = point_cloud
         self.logger.info("Point cloud set")
-
-        # self.__segment_point_cloud(self.point_cloud) # TODO: Remove this
 
     @property
     def parent_las(self) -> 'LAS':
@@ -205,7 +203,7 @@ class LAS(FileHandler):
             las = lf.read()
 
         self.logger.info(f"Reading {self.file_path}")
-        self.logger.info(f"Dimension names: {', '.join(las.point_format.dimension_names)}")
+        self.logger.debug(f"Dimension names: {', '.join(las.point_format.dimension_names)}")
 
         print()
 
@@ -269,17 +267,19 @@ class LAS(FileHandler):
         pc_df -= origin  # Adjusting the DataFrame by subtracting the origin
         Logger.get_logger(__name__).info(f"Set origin to (0, 0, 0)")
 
-        rows_per_split = math.floor(
+        print(pc_df.head(10))
+
+        segment_count = math.floor(
             Config.SPLIT_SCALE_FACTOR.value * pc_df.size  # TODO: Setup a new formula for this
         )  # No. of rows per split
 
-        self.logger.info(f"No. of rows per split: {rows_per_split}")
+        self.logger.info(f"No. of rows per split: {segment_count}")
 
         segmented_point_clouds = []
 
-        for i in range(rows_per_split):
-            start = i * rows_per_split
-            end = (i + 1) * rows_per_split
+        for i in range(segment_count):
+            start = i * segment_count
+            end = (i + 1) * segment_count
 
             if start > len(point_cloud.points):
                 self  # TODO: Figure out what to do here
@@ -288,7 +288,7 @@ class LAS(FileHandler):
             if end > len(point_cloud.points):
                 end = len(point_cloud.points)  # Set end to the no. of points if end is greater than the no. of points
 
-            self.logger.info(f"Splitting points from {start} to {end}")
+            self.logger.debug(f"Splitting points from {start} to {end}")
 
             df = pd.DataFrame(np.asarray(point_cloud.points)[start:end], columns=["x", "y", "z"])
             segmented_point_cloud = self.__df_to_pc(df)
@@ -302,20 +302,20 @@ class LAS(FileHandler):
         Converts a pandas DataFrame to an open3d.geometry.PointCloud object
         :return:
         """
-        self.logger.info("Converting DataFrame to PointCloud object...")
+        self.logger.debug("Converting DataFrame to PointCloud object...")
         if points.empty:
             self.logger.warning("Points are empty")
 
             if self.__is_parent():
                 exit(-1)  # Exits program if parent point cloud is empty
 
-        self.logger.info(f"No. of points in DataFrame: {len(points)}")
+        self.logger.debug(f"No. of points in DataFrame: {len(points)}")
 
         origin = points.iloc[0]  # Getting the origin point
         points = points - origin  # Subtracting the origin point from all points
 
         x, y, z = origin  # Getting the x, y, z coordinates of the origin point
-        self.logger.info(f"Origin point: ({x}, {y}, {z})")
+        self.logger.debug(f"Origin point: ({x}, {y}, {z})")
 
         point_cloud = o3d.geometry.PointCloud()
         point_cloud.points = o3d.utility.Vector3dVector(points.to_numpy())
@@ -326,7 +326,7 @@ class LAS(FileHandler):
         Converts an open3d.geometry.PointCloud object to a pandas DataFrame
         :return:
         """
-        self.logger.info("Converting PointCloud object to DataFrame...")
+        self.logger.debug("Converting PointCloud object to DataFrame...")
         points = np.asarray(point_cloud.points)
         points = pd.DataFrame(data=points, columns=["x", "y", "z"])
         return points
