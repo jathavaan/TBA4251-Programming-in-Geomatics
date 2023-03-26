@@ -16,7 +16,7 @@ from src.model.plane import Plane
 class LAS(FileHandler):
     __point_cloud: o3d.geometry.PointCloud
     __parent_las: 'LAS'
-    __segmented_point_clouds: list['LAS']
+    __segmented_LAS: list['LAS']
     __plane: Plane
 
     def __init__(
@@ -51,7 +51,7 @@ class LAS(FileHandler):
         if self.__is_parent():
             self.logger.info("Creating parent LAS object")
             self._open()  # Opening file and setting point cloud
-            self.segmented_point_clouds = [pc for pc in self.__segment_point_cloud(self.point_cloud)]
+            self.segmented_LAS = [pc for pc in self.__segment_point_cloud(self.point_cloud)]
         else:
             if parent is None:
                 raise TypeError("Parent cannot be None")
@@ -61,9 +61,9 @@ class LAS(FileHandler):
 
             self.logger.info("Creating child LAS object")
             self.point_cloud = point_cloud
-            self.segmented_point_clouds = []
-            self.plane = self.__generate_plane(self.point_cloud)
+            self.segmented_LAS = []
 
+        self.plane = self.__generate_plane(self.point_cloud)
         self.logger.info("Iteration complete\n")
 
     @property
@@ -89,8 +89,6 @@ class LAS(FileHandler):
 
         # TODO: Add point cloud manipulation here
         # TODO: Check if it is necessary to run a voxel downsize here
-        if self.__is_parent():
-            point_cloud = self.__voxel_downsample(point_cloud)
 
         self.__point_cloud = point_cloud
         self.logger.info("Point cloud set")
@@ -139,27 +137,27 @@ class LAS(FileHandler):
         self.__plane = plane
 
     @property
-    def segmented_point_clouds(self) -> list[o3d.geometry.PointCloud]:
+    def segmented_LAS(self) -> list['LAS']:
         """
         Returns the segmented point clouds
         :return:
         """
-        return self.__segmented_point_clouds
+        return self.__segmented_LAS
 
-    @segmented_point_clouds.setter
-    def segmented_point_clouds(self, segmented_point_clouds: list['LAS']) -> None:
+    @segmented_LAS.setter
+    def segmented_LAS(self, segmented_LAS: list['LAS']) -> None:
         """
         Sets the segmented point clouds
-        :param segmented_point_clouds:
+        :param segmented_LAS:
         :return:
         """
-        if segmented_point_clouds is None:
+        if segmented_LAS is None:
             raise TypeError("Segmented point clouds cannot be None")
 
-        if not isinstance(segmented_point_clouds, list):
+        if not isinstance(segmented_LAS, list):
             raise TypeError("Segmented point clouds must be a list")
 
-        self.__segmented_point_clouds = segmented_point_clouds
+        self.__segmented_LAS = segmented_LAS
         self.logger.info("Segmented point clouds updated")
 
     def add_plane(self, plane: Plane) -> None:
@@ -178,17 +176,23 @@ class LAS(FileHandler):
             self.planes.append(plane)
             self.logger.info(f"{plane} added")
 
-    def display(self, point_cloud: o3d.geometry.PointCloud = None) -> None:
+    def filter_deviations(self) -> list['LAS']:
+        lower_bound, upper_bound = Config.SE_THRESHOLD.value
+        return list(filter(lambda las: lower_bound < las.plane.SE < upper_bound, self.segmented_LAS))
+
+    def display(self, *point_clouds: o3d.geometry.PointCloud) -> None:
         """
         Displays the point cloud in a 3D viewer
         :return:
         """
+        if not point_clouds:
+            point_clouds = None
+
         self.logger.info("Displaying point cloud...")
         self.logger.info(f"Point cloud has {len(self.point_cloud.points)} points")
-        self.logger.info(f"Plane: {self.plane} | SD: {self.plane.standard_deviation()}")
 
         o3d.visualization.draw_geometries(
-            [self.point_cloud if point_cloud is None else point_cloud],  # Point cloud to display
+            [self.point_cloud] if point_clouds is None else [pc for pc in point_clouds],  # Point cloud to display
             point_show_normal=Config.SHOW_NORMAL_VECTORS.value,
         )  # Displaying the point cloud
 
@@ -250,7 +254,7 @@ class LAS(FileHandler):
         inlier_points_df = self.__pc_to_df(point_cloud).iloc[inlier_indexes]  # Converting the pc to df
         plane.inliers = inlier_points_df  # Setting the inliers
 
-        self.logger.info(f"Generated plane: {plane} with {len(plane.inliers)} inliers")
+        self.logger.debug(f"Generated plane: {plane} with {len(plane.inliers)} inliers")
         return plane
 
     def __segment_point_cloud(self, point_cloud: o3d.geometry.PointCloud) -> list['LAS']:
@@ -263,9 +267,9 @@ class LAS(FileHandler):
         pc_df = self.__pc_to_df(point_cloud)  # Converting the point cloud to a DataFrame
         # pc_df.sort_values(by=["x", "y"], inplace=True)  # Sorting the DataFrame by x, y
         origin = pc_df.iloc[0]  # Getting the origin point
-        Logger.get_logger(__name__).info(f"Origin {origin.x, origin.y, origin.z}")
+        Logger.get_logger(__name__).debug(f"Origin {origin.x, origin.y, origin.z}")
         pc_df -= origin  # Adjusting the DataFrame by subtracting the origin
-        Logger.get_logger(__name__).info(f"Set origin to (0, 0, 0)")
+        Logger.get_logger(__name__).debug(f"Translated origin to (0, 0, 0)")
 
         print(pc_df.head(10))
 
@@ -282,7 +286,6 @@ class LAS(FileHandler):
             end = (i + 1) * segment_count
 
             if start > len(point_cloud.points):
-                self  # TODO: Figure out what to do here
                 break  # Break if start is greater than the no. of points
 
             if end > len(point_cloud.points):
@@ -333,6 +336,6 @@ class LAS(FileHandler):
 
     def __repr__(self) -> str:
         return f"is parent: {self.__is_parent()}; " \
-               f"no. of children: {len(self.segmented_point_clouds)}; " \
+               f"no. of children: {len(self.segmented_LAS)}; " \
                f"no. of points: {len(self.point_cloud.points)}; " \
                f"plane: {self.plane};"

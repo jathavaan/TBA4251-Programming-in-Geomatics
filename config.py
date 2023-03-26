@@ -24,4 +24,7 @@ class Config(Enum):
     NUM_ITERATIONS = 300  # Number of iterations for RANSAC algorithm
 
     # Plane split settings
-    SPLIT_SCALE_FACTOR = 1e-3  # Scaling factor for splitting the point cloud into smaller dataframes [0, 1]
+    SPLIT_SCALE_FACTOR = 3e-3  # Scaling factor for splitting the point cloud into smaller dataframes [0, 1]
+
+    # Thresholds
+    SE_THRESHOLD = 1.8, 2.3

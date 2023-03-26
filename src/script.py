@@ -4,8 +4,10 @@ from src.file_handling.las import LAS
 
 def main() -> None:
     las = LAS(file_path=Config.SPEEDBUMP_DATA_PATH.value)
-    segmented_point_clouds = (spc for spc in las.segmented_point_clouds)
-    [spc.display() for spc in segmented_point_clouds]
+    filtered_LAS = (l for l in las.filter_deviations())
+    for filtered_las in filtered_LAS:
+        print(filtered_las)
+
 
 
 if __name__ == "__main__":
