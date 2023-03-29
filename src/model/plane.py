@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
 import numpy as np
-import pandas as pd
 import open3d as o3d
+import pandas as pd
 
 from src.logger.logger import Logger
 
@@ -141,33 +141,12 @@ class Plane:
 
         return z - plane_z
 
+    @property
     def point_cloud(self) -> o3d.geometry.PointCloud:
         df = self.inliers
         point_cloud = o3d.geometry.PointCloud()
         point_cloud.points = o3d.utility.Vector3dVector(df.to_numpy())
         return point_cloud
 
-
-
-    @property
-    def mean(self) -> float:
-        """
-        Calculates the mean of the inliers
-        :return:
-        """
-        return self.inliers.z.mean()
-
-    @property
-    def VAR(self) -> float:
-        return self.inliers.z.var()
-
-    @property
-    def SD(self) -> float:
-        return self.inliers.z.std()
-
-    @property
-    def SE(self) -> float:
-        return self.SD / np.sqrt(self.inliers.z.size)
-
     def __repr__(self):
-        return f"VAR[Z]={self.VAR} | SD[Z]={self.SD} | SE[Z]={self.SE}"
+        return f"a: {self.a}, b: {self.b}, c: {self.c}, d: {self.d}"

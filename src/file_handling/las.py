@@ -18,6 +18,7 @@ class LAS(FileHandler):
     __parent_las: 'LAS'
     __segmented_LAS: list['LAS']
     __plane: Plane
+    __flagged: bool
 
     def __init__(
             self,
@@ -51,7 +52,8 @@ class LAS(FileHandler):
         if self.__is_parent():
             self.logger.info("Creating parent LAS object")
             self._open()  # Opening file and setting point cloud
-            self.segmented_LAS = [pc for pc in self.__segment_point_cloud(self.point_cloud)]
+            self.segmented_LAS = [pc for pc in self.__segment_point_cloud(self.point_cloud)]  # Segments the point cloud
+            self.flag_LAS()  # Flags the LAS object if the difference between plane and point cloud is too large
         else:
             if parent is None:
                 raise TypeError("Parent cannot be None")
@@ -64,6 +66,7 @@ class LAS(FileHandler):
             self.segmented_LAS = []
 
         self.plane = self.__generate_plane(self.point_cloud)
+        self.flagged = False  # Sets flagged to False by default
         self.logger.info("Iteration complete\n")
 
     @property
@@ -160,6 +163,14 @@ class LAS(FileHandler):
         self.__segmented_LAS = segmented_LAS
         self.logger.info("Segmented point clouds updated")
 
+    @property
+    def flagged(self) -> bool:
+        return self.__flagged
+
+    @flagged.setter
+    def flagged(self, flagged: bool) -> None:
+        self.__flagged = flagged
+
     def add_plane(self, plane: Plane) -> None:
         """
         Adds a plane to the list of planes
@@ -176,9 +187,66 @@ class LAS(FileHandler):
             self.planes.append(plane)
             self.logger.info(f"{plane} added")
 
-    def filter_deviations(self) -> list['LAS']:
-        lower_bound, upper_bound = Config.SE_THRESHOLD.value
-        return list(filter(lambda las: lower_bound < las.plane.SE < upper_bound, self.segmented_LAS))
+    def filter(self, filter_type: str) -> list['LAS']:
+        """
+        Filters the point clouds based on the type
+        :param filter_type: The type of filter to apply; either 'mean', 'sd' or 'se'
+        :return:
+        """
+        if filter_type is None:
+            raise TypeError("Type cannot be None")
+
+        if not isinstance(filter_type, str):
+            raise TypeError("Type must be a string")
+
+        if filter_type not in ["mean", "sd", "se"]:
+            raise ValueError("Type must be either 'mean', 'sd' or 'se'")
+
+        filter_type = filter_type.lower()
+        match filter_type:
+            case "mean":
+                lower_bound, upper_bound = Config.MEAN_THRESHOLD.value
+                return list(filter(lambda las: lower_bound < las.plane.mean < upper_bound, self.segmented_LAS))
+            case "sd":
+                lower_bound, upper_bound = Config.SD_THRESHOLD.value
+                return list(filter(lambda las: lower_bound < las.plane.SD < upper_bound, self.segmented_LAS))
+            case "se":
+                lower_bound, upper_bound = Config.SE_THRESHOLD.value
+                return list(filter(lambda las: lower_bound < las.plane.SE < upper_bound, self.segmented_LAS))
+
+    def merge_segmented_pc(self, *LAS_objects) -> o3d.geometry.PointCloud:
+        merged_las_df = pd.concat(
+            [
+                self.__pc_to_df(s_LAS.plane.point_cloud) for s_LAS in self.segmented_LAS
+                if Config.SD_THRESHOLD.value[0] < self.SD(s_LAS.point_cloud) < Config.SD_THRESHOLD.value[1]
+            ] if len(LAS_objects) == 0 else [
+                self.__pc_to_df(s_LAS.plane.point_cloud) for s_LAS in LAS_objects
+            ]
+        )
+
+        point_cloud = o3d.geometry.PointCloud()
+        point_cloud.points = o3d.utility.Vector3dVector(merged_las_df.to_numpy())
+        return point_cloud
+
+    def flag_LAS(self) -> None:
+        las_list = self.segmented_LAS
+
+        for las in las_list:
+            inliers_df = las.plane.inliers
+            x_real = np.array(inliers_df.x)
+            y_real = np.array(inliers_df.y)
+            z_real = np.array(inliers_df.z)
+
+            z_plane = np.array([
+                las.plane.z(x, y) for x, y in zip(x_real, y_real)
+            ])
+
+            diff = np.abs(z_real - z_plane)  # Difference in z-value between the plane and the point cloud
+            SD = np.std(diff)
+
+            if SD > Config.SD_THRESHOLD.value[0]:
+                las.flagged = True  # Flagging if difference SD is larger than threshold
+                self.logger.info(f"FLAGGED PLANE: {las.plane}")
 
     def display(self, *point_clouds: o3d.geometry.PointCloud) -> None:
         """
@@ -215,6 +283,23 @@ class LAS(FileHandler):
         points = pd.DataFrame(data=np.array([x, y, z]).T, columns=["x", "y", "z"])  # Storing coordinates in a DataFrame
         point_cloud = self.__df_to_pc(points)  # Converting the DataFrame to a PointCloud object
         self.point_cloud = point_cloud  # Setting the point cloud
+
+    @property
+    def mean(self, point_cloud: o3d.geometry.PointCloud) -> float:
+        """
+        Calculates the mean of the inliers
+        :return:
+        """
+        return self.__pc_to_df(point_cloud).z.mean()
+
+    def VAR(self, point_cloud: o3d.geometry.PointCloud) -> float:
+        return self.__pc_to_df(point_cloud).z.var()
+
+    def SD(self, point_cloud: o3d.geometry.PointCloud) -> float:
+        return self.__pc_to_df(point_cloud).z.std()
+
+    def SE(self, point_cloud: o3d.geometry.PointCloud) -> float:
+        return self.SD(point_cloud) / np.sqrt(self.__pc_to_df(point_cloud).size)
 
     def __is_parent(self) -> bool:
         """
@@ -265,13 +350,10 @@ class LAS(FileHandler):
         """
         self.logger.info("Segmenting point cloud into smaller frames...")
         pc_df = self.__pc_to_df(point_cloud)  # Converting the point cloud to a DataFrame
-        # pc_df.sort_values(by=["x", "y"], inplace=True)  # Sorting the DataFrame by x, y
         origin = pc_df.iloc[0]  # Getting the origin point
         Logger.get_logger(__name__).debug(f"Origin {origin.x, origin.y, origin.z}")
         pc_df -= origin  # Adjusting the DataFrame by subtracting the origin
         Logger.get_logger(__name__).debug(f"Translated origin to (0, 0, 0)")
-
-        print(pc_df.head(10))
 
         segment_count = math.floor(
             Config.SPLIT_SCALE_FACTOR.value * pc_df.size  # TODO: Setup a new formula for this
@@ -292,6 +374,8 @@ class LAS(FileHandler):
                 end = len(point_cloud.points)  # Set end to the no. of points if end is greater than the no. of points
 
             self.logger.debug(f"Splitting points from {start} to {end}")
+
+            df = pd.DataFrame(np.asarray(point_cloud.points), columns=["x", "y", "z"])
 
             df = pd.DataFrame(np.asarray(point_cloud.points)[start:end], columns=["x", "y", "z"])
             segmented_point_cloud = self.__df_to_pc(df)
@@ -315,7 +399,6 @@ class LAS(FileHandler):
         self.logger.debug(f"No. of points in DataFrame: {len(points)}")
 
         origin = points.iloc[0]  # Getting the origin point
-        points = points - origin  # Subtracting the origin point from all points
 
         x, y, z = origin  # Getting the x, y, z coordinates of the origin point
         self.logger.debug(f"Origin point: ({x}, {y}, {z})")

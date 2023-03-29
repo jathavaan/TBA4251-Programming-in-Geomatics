@@ -4,10 +4,10 @@ from src.file_handling.las import LAS
 
 def main() -> None:
     las = LAS(file_path=Config.SPEEDBUMP_DATA_PATH.value)
-    filtered_LAS = (l for l in las.filter_deviations())
-    for filtered_las in filtered_LAS:
-        print(filtered_las)
-
+    las.flag_LAS()
+    flagged_LAS = [l for l in las.segmented_LAS if l.flagged]
+    merged_pc = las.merge_segmented_pc(*flagged_LAS)
+    las.display(merged_pc)
 
 
 if __name__ == "__main__":

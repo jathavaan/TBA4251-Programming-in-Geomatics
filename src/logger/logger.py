@@ -22,7 +22,7 @@ class Logger:
 
         # Logger configuration
         logging.basicConfig(
-            level=logging.INFO,
+            level=Config.LOGGING_LEVEL.value,
         )
 
         logger = logging.getLogger(filename)
