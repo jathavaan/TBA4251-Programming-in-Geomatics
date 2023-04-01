@@ -94,7 +94,7 @@ class LAS(FileHandler):
         # TODO: Check if it is necessary to run a voxel downsize here
 
         self.__point_cloud = point_cloud
-        self.logger.info("Point cloud set")
+        self.logger.debug("Point cloud set")
 
     @property
     def parent_las(self) -> 'LAS':
@@ -161,7 +161,7 @@ class LAS(FileHandler):
             raise TypeError("Segmented point clouds must be a list")
 
         self.__segmented_LAS = segmented_LAS
-        self.logger.info("Segmented point clouds updated")
+        self.logger.debug("Segmented point clouds updated")
 
     @property
     def flagged(self) -> bool:
@@ -246,7 +246,6 @@ class LAS(FileHandler):
 
             if SD > Config.SD_THRESHOLD.value[0]:
                 las.flagged = True  # Flagging if difference SD is larger than threshold
-                self.logger.info(f"FLAGGED PLANE: {las.plane}")
 
     def display(self, *point_clouds: o3d.geometry.PointCloud) -> None:
         """
@@ -257,7 +256,7 @@ class LAS(FileHandler):
             point_clouds = None
 
         self.logger.info("Displaying point cloud...")
-        self.logger.info(f"Point cloud has {len(self.point_cloud.points)} points")
+        self.logger.info(f"Point cloud has {len(self.point_cloud.points) if point_clouds is None else sum([len(pc.points) for pc in point_clouds])} points")
 
         o3d.visualization.draw_geometries(
             [self.point_cloud] if point_clouds is None else [pc for pc in point_clouds],  # Point cloud to display
