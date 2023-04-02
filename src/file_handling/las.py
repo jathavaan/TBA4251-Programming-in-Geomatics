@@ -5,6 +5,7 @@ import laspy
 import numpy as np
 import open3d as o3d
 import pandas as pd
+from tqdm import tqdm
 
 from config import Config
 from src.file_handling.file_handler import FileHandler
@@ -61,13 +62,13 @@ class LAS(FileHandler):
             if not isinstance(parent, LAS):
                 raise TypeError("Parent must be a LAS object")
 
-            self.logger.info("Creating child LAS object")
+            self.logger.debug("Creating child LAS object")
             self.point_cloud = point_cloud
             self.segmented_LAS = []
 
         self.plane = self.__generate_plane(self.point_cloud)
         self.flagged = False  # Sets flagged to False by default
-        self.logger.info("Iteration complete\n")
+        self.logger.debug("Iteration complete\n")
 
     @property
     def point_cloud(self) -> o3d.geometry.PointCloud:
@@ -325,7 +326,7 @@ class LAS(FileHandler):
             pass
             # point_cloud = self.__voxel_downsample(point_cloud)  # Downsampling the point cloud if self is parent
 
-        self.logger.info("Generating plane...")
+        self.logger.debug("Generating plane...")
         plane_model, inlier_indexes = point_cloud.segment_plane(
             distance_threshold=Config.DISTANCE_THRESHOLD.value,
             ransac_n=Config.RANSAC_N.value,
@@ -361,6 +362,8 @@ class LAS(FileHandler):
         self.logger.info(f"No. of rows per split: {segment_count}")
 
         segmented_point_clouds = []
+        self.logger.info("Splitting point cloud into smaller frames...")
+        progress_bar = tqdm(total=len(point_cloud.points))
 
         for i in range(segment_count):
             start = i * segment_count
@@ -381,6 +384,9 @@ class LAS(FileHandler):
             segmented_las_obj = LAS(point_cloud=segmented_point_cloud, parent=self)
             segmented_point_clouds.append(segmented_las_obj)
 
+            progress_bar.update(end - start)
+
+        progress_bar.close()
         return segmented_point_clouds
 
     def __df_to_pc(self, points: pd.DataFrame) -> o3d.geometry.PointCloud:

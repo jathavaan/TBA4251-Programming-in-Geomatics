@@ -30,4 +30,4 @@ class Config(Enum):
 
     # Thresholds
     SE_THRESHOLD = 1.8, 2.3
-    SD_THRESHOLD = 40, 300
+    SD_THRESHOLD = 430, 435
